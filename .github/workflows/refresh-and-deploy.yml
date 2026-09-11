@@ -100,6 +100,7 @@ jobs:
             data/settings-previous.json \
             data/categories-previous.json \
             public/search-index.json \
+            public/oma-uri-index.json \
             public/baselines
           # Summaries file may not exist if the AI step was skipped/failed.
           git add -f data/changelog-summaries.json 2>/dev/null || true
@@ -107,7 +108,18 @@ jobs:
           git push
 
       # ── Build the Next.js static site ──
+      - name: Determine base path
+        id: basepath
+        run: |
+          if [ -f public/CNAME ]; then
+            echo "value=" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=/${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build site
+        env:
+          NEXT_BASE_PATH: ${{ steps.basepath.outputs.value }}
         run: npm run build
 
       # ── Deploy to GitHub Pages ──

@@ -92,6 +92,13 @@ export default function MobileNav() {
               Compliance
             </Link>
             <Link
+              href="/convert/"
+              onClick={() => setOpen(false)}
+              className="px-3 py-3 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors text-[15px]"
+            >
+              OMA-URI Converter
+            </Link>
+            <Link
               href="/changelog/"
               onClick={() => setOpen(false)}
               className="px-3 py-3 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors text-[15px]"

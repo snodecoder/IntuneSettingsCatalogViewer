@@ -111,6 +111,9 @@ export default function RootLayout({
                 <Link href="/compliance/" className="px-3 py-2 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors" prefetch={false}>
                   Compliance
                 </Link>
+                <Link href="/convert/" className="px-3 py-2 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors">
+                  Convert
+                </Link>
                 <Link href="/changelog/" className="px-3 py-2 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors" prefetch={false}>
                   Changelog
                 </Link>
