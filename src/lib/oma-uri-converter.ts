@@ -200,6 +200,21 @@ function buildSimpleInstance(
   };
 }
 
+/**
+ * A handful of CSPs (Defender, Firewall, some Policy areas, etc.) are registered in the
+ * catalog with a `baseUri` that omits the `./Device/` or `./User/` scope segment, even
+ * though real OMA-URIs always include it. Look up the exact path first, then fall back to
+ * adding/stripping the scope segment so those settings still match.
+ * ponytail: only tries the two segments actually seen in the catalog (device/user); if a
+ * CSP ever needs a 3rd scope keyword this silently misses it.
+ */
+function lookupIndexEntry(index: Record<string, OmaUriIndexEntry>, cspPath: string): OmaUriIndexEntry | undefined {
+  if (index[cspPath]) return index[cspPath];
+  const scopeMatch = cspPath.match(/^\.\/(device|user)\/(.+)$/);
+  if (scopeMatch) return index[`./${scopeMatch[2]}`];
+  return index[`./device/${cspPath.replace(/^\.\//, '')}`] || index[`./user/${cspPath.replace(/^\.\//, '')}`];
+}
+
 /** Convert parsed OMA-URI rows into a Settings Catalog policy, using the build-time catalog index. */
 export function convertOmaUriRows(
   rows: OmaUriInputRow[],
@@ -208,7 +223,7 @@ export function convertOmaUriRows(
 ): ConversionResult {
   const results: ConversionRowResult[] = rows.map((row) => {
     const cspPath = normalizeCspPath(row.omaUri);
-    const entry = index[cspPath];
+    const entry = lookupIndexEntry(index, cspPath);
     if (!entry) {
       return { input: row, status: 'unmatched', message: 'No matching Settings Catalog setting found for this OMA-URI.' };
     }
