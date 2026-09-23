@@ -9,6 +9,8 @@ on:
       - 'public/oib-data.json'
       - 'LICENSE'
       - 'README.md'
+  workflow_dispatch:
+    # Allow manual trigger      
 
 permissions:
   pages: write
