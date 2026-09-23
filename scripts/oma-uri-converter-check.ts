@@ -12,8 +12,9 @@
  */
 
 import * as assert from 'assert';
-import { normalizeCspPath, type OmaUriIndexEntry } from '../src/lib/types';
+import { normalizeCspPath, type OmaUriIndexEntry, type SettingDefinition } from '../src/lib/types';
 import { parseOmaUriInput, convertOmaUriRows } from '../src/lib/oma-uri-converter';
+import { buildOmaUriIndexEntries } from './build-search-index';
 
 // ── normalizeCspPath ──
 assert.strictEqual(
@@ -172,4 +173,84 @@ const fakeIndex: Record<string, OmaUriIndexEntry> = {
 }
 
 console.log('convertOmaUriRows: OK');
+
+// ── buildOmaUriIndexEntries ──
+
+function fakeDef(overrides: Partial<SettingDefinition>): SettingDefinition {
+  return {
+    '@odata.type': '#microsoft.graph.deviceManagementConfigurationChoiceSettingDefinition',
+    id: 'id',
+    name: 'name',
+    displayName: 'Display',
+    categoryId: 'cat1',
+    ...overrides,
+  };
+}
+
+// Collision: a child (dependent) definition appears in settings.json before
+// its root, sharing the same OMA-URI. The index must resolve to the root.
+{
+  const settings: SettingDefinition[] = [
+    fakeDef({
+      id: 'child_setting',
+      displayName: 'Child',
+      rootDefinitionId: 'root_setting',
+      baseUri: './Device/Vendor/MSFT/Policy',
+      offsetUri: '/Config/Area/Thing',
+    }),
+    fakeDef({
+      id: 'root_setting',
+      displayName: 'Root',
+      rootDefinitionId: 'root_setting',
+      baseUri: './Device/Vendor/MSFT/Policy',
+      offsetUri: '/Config/Area/Thing',
+    }),
+  ];
+  const index = buildOmaUriIndexEntries(settings);
+  const entry = index['./device/vendor/msft/policy/config/area/thing'];
+  assert.strictEqual(entry.id, 'root_setting');
+}
+
+// Same collision, but the root appears first — must stay the root, not be
+// overwritten by the child seen afterwards.
+{
+  const settings: SettingDefinition[] = [
+    fakeDef({
+      id: 'root_setting',
+      displayName: 'Root',
+      rootDefinitionId: 'root_setting',
+      baseUri: './Device/Vendor/MSFT/Policy',
+      offsetUri: '/Config/Area/Thing',
+    }),
+    fakeDef({
+      id: 'child_setting',
+      displayName: 'Child',
+      rootDefinitionId: 'root_setting',
+      baseUri: './Device/Vendor/MSFT/Policy',
+      offsetUri: '/Config/Area/Thing',
+    }),
+  ];
+  const index = buildOmaUriIndexEntries(settings);
+  assert.strictEqual(index['./device/vendor/msft/policy/config/area/thing'].id, 'root_setting');
+}
+
+// Legacy Edge ADMX alias: a versioned catalog token like "microsoft_edgev110~"
+// must also be reachable via the old unversioned "microsoftedge~" token used
+// by older OMA-URI Custom profiles.
+{
+  const settings: SettingDefinition[] = [
+    fakeDef({
+      id: 'edge_setting',
+      displayName: 'Edge setting',
+      baseUri: './Device/Vendor/MSFT/Policy',
+      offsetUri: '/Config/microsoft_edgev110~Policy~microsoft_edge~Extensions/ExtensionSetting',
+    }),
+  ];
+  const index = buildOmaUriIndexEntries(settings);
+  const legacyKey = './device/vendor/msft/policy/config/microsoftedge~policy~microsoft_edge~extensions/extensionsetting';
+  assert.ok(index[legacyKey], 'expected legacy microsoftedge~ alias to be generated');
+  assert.strictEqual(index[legacyKey].id, 'edge_setting');
+}
+
+console.log('buildOmaUriIndexEntries: OK');
 console.log('\nAll OMA-URI converter checks passed.');

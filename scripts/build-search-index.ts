@@ -329,13 +329,27 @@ function buildSearchManifest() {
 }
 
 /**
+ * Legacy ADMX ingestion token used by older OMA-URI Custom profiles for the
+ * Microsoft Edge policy CSP category segment. Modern catalog entries use
+ * versioned tokens instead — "microsoft_edge~", "microsoft_edgev110~",
+ * "microsoft_edgev146diff~", etc. (the segment right after `/config/` and
+ * before the first `~`) — so a pasted OMA-URI containing the old
+ * "microsoftedge~" token would otherwise never match any catalog key.
+ */
+const LEGACY_EDGE_TOKEN = 'microsoftedge';
+const CONFIG_SEP = '/config/';
+
+/**
  * Build a lookup index for the OMA-URI → Settings Catalog converter, keyed by
  * the normalized CSP path (baseUri + offsetUri). Only choice and simple
  * settings are included — settings catalog groups/collections don't have a
  * 1:1 OMA-URI representation, so custom-profile rows can't map to them.
+ * Exported (pure, no fs I/O) so it can be exercised directly by
+ * scripts/oma-uri-converter-check.ts.
  */
-function buildOmaUriIndex(settings: SettingDefinition[]) {
+export function buildOmaUriIndexEntries(settings: SettingDefinition[]): Record<string, OmaUriIndexEntry> {
   const index: Record<string, OmaUriIndexEntry> = {};
+  const isRootDef = new Map<string, boolean>();
   for (const s of settings) {
     if (!s.baseUri || !s.offsetUri) continue;
     const type = s['@odata.type'];
@@ -359,11 +373,40 @@ function buildOmaUriIndex(settings: SettingDefinition[]) {
       })),
       defaultOptionId: s.defaultOptionId,
     };
-    // Duplicate CSP paths exist (e.g. device/user scoped variants that share
-    // the same offset). Keep the first — later entries are equivalent enough
-    // for conversion purposes.
-    if (!index[cspPath]) index[cspPath] = JSON.parse(JSON.stringify(entry));
+    // Duplicate CSP paths exist because child (dependent) settings often share
+    // their parent's OMA-URI/ADMX key. Prefer the root definition — the entry
+    // whose own id matches its rootDefinitionId (or has none) — over a child,
+    // so lookups resolve to the top-level choice/simple setting rather than
+    // whichever entry happened to appear first in settings.json.
+    const isRoot = !s.rootDefinitionId || s.rootDefinitionId === s.id;
+    const existing = index[cspPath];
+    if (!existing || (isRoot && !isRootDef.get(cspPath))) {
+      index[cspPath] = JSON.parse(JSON.stringify(entry));
+      isRootDef.set(cspPath, isRoot);
+    }
   }
+
+  // Alias: legacy "microsoftedge~" Edge ADMX token → every versioned catalog
+  // token seen after /config/ (e.g. "microsoft_edge~", "microsoft_edgev110~").
+  // Only the ADMX token segment is rewritten; the rest of the path (including
+  // the "~microsoft_edge~..." category segment further along) is untouched.
+  for (const [key, entry] of Object.entries(index)) {
+    const idx = key.indexOf(CONFIG_SEP);
+    if (idx === -1) continue;
+    const afterConfig = key.slice(idx + CONFIG_SEP.length);
+    const tilde = afterConfig.indexOf('~');
+    if (tilde === -1) continue;
+    const admxToken = afterConfig.slice(0, tilde);
+    if (!admxToken.startsWith('microsoft_edge')) continue;
+    const aliasKey = key.slice(0, idx + CONFIG_SEP.length) + LEGACY_EDGE_TOKEN + afterConfig.slice(tilde);
+    if (!index[aliasKey]) index[aliasKey] = entry;
+  }
+
+  return index;
+}
+
+function buildOmaUriIndex(settings: SettingDefinition[]) {
+  const index = buildOmaUriIndexEntries(settings);
   const OMA_URI_INDEX_FILE = path.join(PUBLIC_DIR, 'oma-uri-index.json');
   fs.writeFileSync(OMA_URI_INDEX_FILE, JSON.stringify(index), 'utf-8');
   const sizeMB = (fs.statSync(OMA_URI_INDEX_FILE).size / 1024 / 1024).toFixed(2);
@@ -602,4 +645,4 @@ function main() {
   console.log('\nDone!');
 }
 
-main();
+if (require.main === module) main();
