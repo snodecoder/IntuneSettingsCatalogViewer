@@ -31,6 +31,7 @@ No installation, no sign-in. Data is refreshed automatically every day.
 - Use shareable deep links for categories and individual settings.
 - Navigate comfortably on desktop and mobile with keyboard-friendly UI patterns.
 - Benefit from a static, fast-loading site with no runtime API calls.
+- Convert a custom OMA-URI device configuration profile (JSON) into the equivalent Settings Catalog policy JSON, entirely in your browser, in the OMA-URI Converter.
 
 ---
 
@@ -45,6 +46,18 @@ Run `npm run check-browser-data` after generation to check definition coverage, 
 Search runs in a worker and caches a compact numeric-ID index with its documents in IndexedDB. The cache is replaced when catalog content or the installed FlexSearch version changes; missing, blocked, stale, or invalid caches fall back to rebuilding. Only catalog data is persisted, not search queries. Changes to the indexed fields or tokenization options must also bump the `CACHE_VERSION` format prefix in `src/lib/search.worker.ts`.
 
 Run `npm run check-search-worker` to check cold/warm result parity and cache recovery, and `npm run check-search-performance` to check compatibility filtering, lazy match-source calculations, and shared grouping.
+
+The OMA-URI Converter matches each row's CSP path (`baseUri` + `offsetUri`, normalized) against `public/oma-uri-index.json`, built from the full catalog by `build-search-index.ts`. It covers non-collection Choice and Simple settings only; Group/Collection settings are reported as unsupported. Run `npm run check-oma-uri-converter` to check parsing, CSP path normalization, and value matching for Choice/Simple/Secret settings.
+
+## Deploying to Your Own GitHub Pages
+
+This repo builds a static site with `output: 'export'` and deploys it via GitHub Actions. To deploy your own fork:
+
+1. In your fork's **Settings → Pages**, set the source to **GitHub Actions**.
+2. If you're **not** using a custom domain, the workflows automatically set `NEXT_BASE_PATH` to `/<repo-name>` (read by `next.config.js`) so links and assets resolve correctly under `https://<username>.github.io/<repo-name>/`.
+3. If you **are** using a custom domain, add a `public/CNAME` file containing your domain name; the workflows detect it and leave `NEXT_BASE_PATH` empty.
+4. To refresh live Intune data on a schedule, add the `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, and `AZURE_CLIENT_SECRET` repository secrets; otherwise the site builds from whatever's committed in `data/`.
+5. Push to `main` to trigger the `Deploy on Push` workflow, or run `Refresh Settings & Deploy` manually from the Actions tab.
 
 ## License
 

@@ -168,6 +168,11 @@ export interface ChoiceOption {
   displayName: string;
   description?: string;
   helpText?: string;
+  /** The raw CSP/OMA-URI value this option represents (e.g. 0, 1, "true"). */
+  optionValue?: {
+    '@odata.type'?: string;
+    value?: unknown;
+  };
   dependentOn?: Array<{
     dependentOn: string;
     parentSettingId: string;
@@ -186,6 +191,22 @@ export interface ValueDefinition {
   minimumLength?: number;
   maximumLength?: number;
   format?: string;
+  isSecret?: boolean;
+}
+
+// ─── OMA-URI → Settings Catalog conversion ───
+
+/** Slim, build-time-generated lookup entry keyed by normalized CSP path (baseUri + offsetUri). */
+export interface OmaUriIndexEntry {
+  id: string;
+  displayName: string;
+  categoryId: string;
+  odataType: SettingDefinitionODataType;
+  applicability?: { platform?: Platform; technologies?: string };
+  valueDefinition?: ValueDefinition;
+  defaultValue?: unknown;
+  options?: Array<{ itemId: string; displayName: string; value?: unknown }>;
+  defaultOptionId?: string;
 }
 
 // ─── Scope (derived from baseUri) ───
@@ -339,6 +360,16 @@ export function detectMatchSources(
 }
 
 // ─── Helpers ───
+
+/**
+ * Normalize an OMA-URI / CSP path for lookup: trims whitespace, collapses
+ * duplicate slashes, drops a trailing slash, and lowercases. Used to key the
+ * OMA-URI → settings catalog conversion index (see `oma-uri-index.json`)
+ * and to look up a pasted OMA-URI against it.
+ */
+export function normalizeCspPath(path: string): string {
+  return path.trim().replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '').toLowerCase();
+}
 
 /** Derive scope from baseUri */
 export function getSettingScope(baseUri?: string): SettingScope {

@@ -63,7 +63,18 @@ jobs:
       - name: Generate per-setting changelog JSON
         run: npx tsx scripts/generate-changelog-settings.ts
 
+      - name: Determine base path
+        id: basepath
+        run: |
+          if [ -f public/CNAME ]; then
+            echo "value=" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=/${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build site
+        env:
+          NEXT_BASE_PATH: ${{ steps.basepath.outputs.value }}
         run: npm run build
 
       - name: Setup Pages

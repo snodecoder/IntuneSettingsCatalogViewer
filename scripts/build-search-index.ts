@@ -15,7 +15,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'node:crypto';
-import { hasUsage, type SettingDefinition, type SettingCategory, type CategoryTreeNode, type SearchIndexEntry } from '../src/lib/types';
+import { hasUsage, normalizeCspPath, type SettingDefinition, type SettingCategory, type CategoryTreeNode, type SearchIndexEntry, type OmaUriIndexEntry } from '../src/lib/types';
 import { getAsrRuleInfo } from '../src/lib/asr-rules';
 
 const DATA_DIR = path.resolve(__dirname, '..', 'data');
@@ -328,6 +328,48 @@ function buildSearchManifest() {
   fs.writeFileSync(path.join(DATA_DIR, 'search-index-manifest.json'), JSON.stringify({ version, documentCount }), 'utf-8');
 }
 
+/**
+ * Build a lookup index for the OMA-URI → Settings Catalog converter, keyed by
+ * the normalized CSP path (baseUri + offsetUri). Only choice and simple
+ * settings are included — settings catalog groups/collections don't have a
+ * 1:1 OMA-URI representation, so custom-profile rows can't map to them.
+ */
+function buildOmaUriIndex(settings: SettingDefinition[]) {
+  const index: Record<string, OmaUriIndexEntry> = {};
+  for (const s of settings) {
+    if (!s.baseUri || !s.offsetUri) continue;
+    const type = s['@odata.type'];
+    if (type.includes('Collection')) continue;
+    if (!type.includes('Choice') && !type.includes('Simple')) continue;
+    const cspPath = normalizeCspPath(`${s.baseUri}/${s.offsetUri}`);
+    const entry: OmaUriIndexEntry = {
+      id: s.id,
+      displayName: s.displayName,
+      categoryId: s.categoryId,
+      odataType: type,
+      applicability: s.applicability
+        ? { platform: s.applicability.platform, technologies: s.applicability.technologies }
+        : undefined,
+      valueDefinition: s.valueDefinition || undefined,
+      defaultValue: s.defaultValue !== undefined ? s.defaultValue : undefined,
+      options: s.options?.map((o) => ({
+        itemId: o.itemId,
+        displayName: o.displayName,
+        value: o.optionValue?.value,
+      })),
+      defaultOptionId: s.defaultOptionId,
+    };
+    // Duplicate CSP paths exist (e.g. device/user scoped variants that share
+    // the same offset). Keep the first — later entries are equivalent enough
+    // for conversion purposes.
+    if (!index[cspPath]) index[cspPath] = JSON.parse(JSON.stringify(entry));
+  }
+  const OMA_URI_INDEX_FILE = path.join(PUBLIC_DIR, 'oma-uri-index.json');
+  fs.writeFileSync(OMA_URI_INDEX_FILE, JSON.stringify(index), 'utf-8');
+  const sizeMB = (fs.statSync(OMA_URI_INDEX_FILE).size / 1024 / 1024).toFixed(2);
+  console.log(`OMA-URI index: ${Object.keys(index).length} entries (${sizeMB} MB) → ${OMA_URI_INDEX_FILE}`);
+}
+
 function main() {
   if (process.argv.includes('--browser-data-only')) {
     const settings: SettingDefinition[] = JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'settings-browse.json'), 'utf-8'));
@@ -430,6 +472,10 @@ function main() {
   buildSearchManifest();
   const sizeMB = (fs.statSync(SEARCH_INDEX_FILE).size / 1024 / 1024).toFixed(2);
   console.log(`Search index: ${searchEntries.length} entries (${sizeMB} MB) → ${SEARCH_INDEX_FILE}`);
+
+  // Build the OMA-URI → Settings Catalog conversion lookup index
+  console.log('Building OMA-URI index...');
+  buildOmaUriIndex(settings);
 
   // Build category tree
   console.log('Building category tree...');

@@ -30,6 +30,7 @@ data/last-updated.json
 public/search-index.json
 public/changelog-settings/
 public/setting-definitions/
+public/oma-uri-index.json
 data/setting-definitions-manifest.json
 public/settings-bundles/
 data/category-load-manifest.json
