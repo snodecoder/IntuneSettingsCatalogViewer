@@ -37,6 +37,32 @@ assert.deepStrictEqual(parseOmaUriInput('{"omaUri":"./A/B","value":1,"name":"N"}
 ]);
 assert.throws(() => parseOmaUriInput('not json'), /not valid JSON/);
 assert.throws(() => parseOmaUriInput('[{"value":1}]'), /missing an OMA-URI/);
+
+// Graph `omaSettingString` exports nest the real string inside an OData media-value
+// wrapper (`{ "@odata.context": ..., "value": "..." }`) instead of a plain string.
+assert.deepStrictEqual(
+  parseOmaUriInput(
+    JSON.stringify([
+      {
+        '@odata.type': '#microsoft.graph.omaSettingString',
+        displayName: 'SvchostProcessMitigation',
+        omaUri: './Device/Vendor/MSFT/Policy/Config/ServiceControlManager/SvchostProcessMitigation',
+        value: {
+          '@odata.context': 'https://graph.microsoft.com/beta/$metadata#Edm.String',
+          value: 'enabled',
+        },
+      },
+    ]),
+  ),
+  [
+    {
+      name: 'SvchostProcessMitigation',
+      description: undefined,
+      omaUri: './Device/Vendor/MSFT/Policy/Config/ServiceControlManager/SvchostProcessMitigation',
+      value: 'enabled',
+    },
+  ],
+);
 console.log('parseOmaUriInput: OK');
 
 // ── convertOmaUriRows ──
