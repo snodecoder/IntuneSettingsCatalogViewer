@@ -54,6 +54,20 @@ function firstDefined(obj: Record<string, unknown>, keys: string[]): unknown {
 }
 
 /**
+ * Graph serializes `omaSettingString` (and similarly-streamed omaSetting types) with the
+ * actual value nested inside an OData media-value wrapper instead of as a plain string, e.g.
+ * `{ "@odata.context": "https://graph.microsoft.com/beta/$metadata#Edm.String", "value": "..." }`.
+ * Unwrap that shape so the real string is used instead of the wrapper object.
+ */
+function unwrapODataMediaValue(value: unknown): unknown {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    if ('@odata.context' in obj && 'value' in obj) return obj.value;
+  }
+  return value;
+}
+
+/**
  * Parse raw JSON text (pasted or uploaded) into a flat list of OMA-URI rows.
  * Accepts a bare array, `{ omaUriSettings: [...] }` / `{ settings: [...] }`
  * wrapper objects, or a single row object.
@@ -90,7 +104,7 @@ export function parseOmaUriInput(rawText: string): OmaUriInputRow[] {
       name: (firstDefined(obj, NAME_KEYS) as string | undefined) || undefined,
       description: (firstDefined(obj, DESCRIPTION_KEYS) as string | undefined) || undefined,
       omaUri: uri,
-      value: firstDefined(obj, VALUE_KEYS),
+      value: unwrapODataMediaValue(firstDefined(obj, VALUE_KEYS)),
     };
   });
 }
