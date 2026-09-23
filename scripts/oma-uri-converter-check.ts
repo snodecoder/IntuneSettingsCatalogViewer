@@ -70,6 +70,18 @@ const fakeIndex: Record<string, OmaUriIndexEntry> = {
     categoryId: 'cat1',
     odataType: '#microsoft.graph.deviceManagementConfigurationSettingGroupCollectionDefinition',
   },
+  // Some CSPs (e.g. Defender) are catalogued with a baseUri that omits the
+  // ./Device/ or ./User/ scope segment, even though real OMA-URIs include it.
+  './vendor/msft/defender/configuration/allownetworkprotectiononwinserver': {
+    id: 'device_vendor_msft_defender_configuration_allownetworkprotectiononwinserver',
+    displayName: 'Allow Network Protection On Win Server',
+    categoryId: 'cat1',
+    odataType: '#microsoft.graph.deviceManagementConfigurationChoiceSettingDefinition',
+    options: [
+      { itemId: 'device_vendor_msft_defender_configuration_allownetworkprotectiononwinserver_0', displayName: 'Disabled', value: 0 },
+      { itemId: 'device_vendor_msft_defender_configuration_allownetworkprotectiononwinserver_1', displayName: 'Enabled', value: 1 },
+    ],
+  },
 };
 
 // Choice: matches by raw CSP value.
@@ -128,6 +140,20 @@ const fakeIndex: Record<string, OmaUriIndexEntry> = {
     fakeIndex,
   );
   assert.strictEqual(result.rows[0].status, 'unsupported');
+}
+
+// Scope-prefix mismatch: catalog baseUri omits ./Device/, real OMA-URI includes it.
+{
+  const result = convertOmaUriRows(
+    [{ omaUri: './Device/Vendor/MSFT/Defender/Configuration/AllowNetworkProtectionOnWinServer', value: 0 }],
+    fakeIndex,
+  );
+  assert.strictEqual(result.rows[0].status, 'converted');
+  const instance = result.rows[0].settingInstance as any;
+  assert.strictEqual(
+    instance.choiceSettingValue.value,
+    'device_vendor_msft_defender_configuration_allownetworkprotectiononwinserver_0',
+  );
 }
 
 // Final policy payload only includes converted rows.
