@@ -15,7 +15,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'node:crypto';
-import { hasUsage, normalizeCspPath, type SettingDefinition, type SettingCategory, type CategoryTreeNode, type SearchIndexEntry, type OmaUriIndexEntry } from '../src/lib/types';
+import { hasUsage, normalizeCspPath, buildCspPath, type SettingDefinition, type SettingCategory, type CategoryTreeNode, type SearchIndexEntry, type OmaUriIndexEntry } from '../src/lib/types';
 import { getAsrRuleInfo } from '../src/lib/asr-rules';
 
 const DATA_DIR = path.resolve(__dirname, '..', 'data');
@@ -355,7 +355,7 @@ export function buildOmaUriIndexEntries(settings: SettingDefinition[]): Record<s
     const type = s['@odata.type'];
     if (type.includes('Collection')) continue;
     if (!type.includes('Choice') && !type.includes('Simple')) continue;
-    const cspPath = normalizeCspPath(`${s.baseUri}/${s.offsetUri}`);
+    const cspPath = normalizeCspPath(buildCspPath(s.baseUri, s.offsetUri));
     const entry: OmaUriIndexEntry = {
       id: s.id,
       displayName: s.displayName,
@@ -455,10 +455,7 @@ function main() {
   const settingById = new Map<string, SettingDefinition>();
   for (const s of settings) settingById.set(s.id, s);
 
-  const getCspPath = (s: SettingDefinition) =>
-    s.baseUri && s.offsetUri
-      ? `${s.baseUri}/${s.offsetUri}`
-      : s.baseUri || s.offsetUri || '';
+  const getCspPath = (s: SettingDefinition) => buildCspPath(s.baseUri, s.offsetUri);
 
   const settingsCountMap = new Map<string, number>();
   const countSetting = (s: SettingDefinition) => {

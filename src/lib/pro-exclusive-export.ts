@@ -4,7 +4,7 @@
 // Reuses the OIB changelog's STYLE/escapeHtml/csvCell so both reports look alike.
 
 import type { SettingDefinition } from './types';
-import { getSettingScope, getSettingTypeLabel } from './types';
+import { getSettingScope, getSettingTypeLabel, buildCspPath } from './types';
 import { csvCell } from './oib-export-shared';
 import { STYLE, escapeHtml, formatDefinitionId } from './oib-html-export';
 
@@ -20,8 +20,7 @@ interface ProExclusiveExportOptions {
 }
 
 function cspPath(s: SettingDefinition): string {
-  if (s.baseUri && s.offsetUri) return `${s.baseUri}/${s.offsetUri}`;
-  return s.baseUri || s.offsetUri || '';
+  return buildCspPath(s.baseUri, s.offsetUri);
 }
 
 function categoryName(s: SettingDefinition, categoryMap: Record<string, string>): string {

@@ -1,5 +1,5 @@
 import type { SettingDefinition, MatchSource } from '@/lib/types';
-import { getPlatformLabel } from '@/lib/types';
+import { getPlatformLabel, buildCspPath } from '@/lib/types';
 import { skuLabel } from '@/lib/sku-labels';
 import { getAsrRuleInfo, ASR_DOCS_URL } from '@/lib/asr-rules';
 import { PLATFORM_ICONS } from './PlatformIcons';
@@ -23,10 +23,7 @@ interface SettingDetailProps {
 }
 
 export default function SettingDetail({ setting, allSettings, highlightQuery, matchSources, activeOptionIds, activeSimpleValue, activeLabel = 'OIB' }: SettingDetailProps) {
-  const cspPath =
-    setting.baseUri && setting.offsetUri
-      ? `${setting.baseUri}/${setting.offsetUri}`
-      : setting.baseUri || setting.offsetUri || '—';
+  const cspPath = buildCspPath(setting.baseUri, setting.offsetUri) || '—';
   const platform = setting.applicability?.platform;
   const platformLabel = getPlatformLabel(platform);
   const PlatformIcon = platform ? PLATFORM_ICONS[platform] : undefined;

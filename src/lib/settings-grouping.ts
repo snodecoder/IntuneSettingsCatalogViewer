@@ -1,12 +1,11 @@
 import type { SettingDefinition } from './types';
+import { buildCspPath } from './types';
 
 /**
  * Derive the CSP path for a setting from its baseUri + offsetUri.
  */
 export function getCspPath(s: SettingDefinition): string {
-  return s.baseUri && s.offsetUri
-    ? `${s.baseUri}/${s.offsetUri}`
-    : s.baseUri || s.offsetUri || '';
+  return buildCspPath(s.baseUri, s.offsetUri);
 }
 
 /**

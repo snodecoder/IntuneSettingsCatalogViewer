@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useState, useMemo } from 'react';
 import type { ChangelogEntry, ChangelogSettingRef, ChangelogSettingSummary, ChangelogSummary, SettingCategory, SettingDefinition } from '@/lib/types';
+import { buildCspPath } from '@/lib/types';
 import { PLATFORM_ICONS, PLATFORM_LABELS } from './PlatformIcons';
 import { settingSlug } from '@/lib/slug';
 import { basePath } from '@/lib/basePath';
@@ -1358,9 +1359,7 @@ function getSettingSearchText(setting?: ChangelogSettingSummary): string {
 
   // Note: option-level text isn't searchable on the changelog page since
   // options are excluded from the initial payload (lazy-fetched on expand).
-  const cspPath = setting.baseUri && setting.offsetUri
-    ? `${setting.baseUri}/${setting.offsetUri}`
-    : setting.baseUri || setting.offsetUri;
+  const cspPath = buildCspPath(setting.baseUri, setting.offsetUri);
 
   return [
     setting.displayName,

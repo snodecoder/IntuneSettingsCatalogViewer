@@ -29,6 +29,7 @@
     "check-compliance": "tsx scripts/compliance-check.ts",
     "check-windows-compatibility": "tsx scripts/windows-compatibility-check.ts",
     "check-oma-uri-converter": "tsx scripts/oma-uri-converter-check.ts",
+    "check-csp-path": "tsx scripts/csp-path-check.ts",
     "refresh": "npm run fetch-settings && npm run generate-changelog && npm run generate-changelog-settings && npm run build-search-index && npm run fetch-compliance-templates",
     "postinstall": "echo 'Run npm run refresh to fetch settings data'"
   },

@@ -349,9 +349,7 @@ export function detectMatchSources(
   // when the displayName itself doesn't contain the search term.
   if (matches(setting.displayName)) sources.push('title');
   if (matches(setting.description)) sources.push('description');
-  const cspPath = setting.baseUri && setting.offsetUri
-    ? `${setting.baseUri}/${setting.offsetUri}`
-    : setting.baseUri || setting.offsetUri || '';
+  const cspPath = buildCspPath(setting.baseUri, setting.offsetUri);
   if (cspPath && matches(cspPath)) sources.push('csp');
   const nameMatchesButNotTitle = !sources.includes('title') && matches(setting.name);
   if (setting.keywords && setting.keywords.some(k => matches(k))) sources.push('keywords');
@@ -369,6 +367,18 @@ export function detectMatchSources(
  */
 export function normalizeCspPath(path: string): string {
   return path.trim().replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '').toLowerCase();
+}
+
+/**
+ * Join a setting's baseUri + offsetUri into its full CSP path. offsetUri
+ * usually already starts with a `/` (it's an absolute path off baseUri), so a
+ * `/` is only inserted when offsetUri is non-empty and doesn't already start
+ * with one — avoiding the `//` that a naive `${baseUri}/${offsetUri}` produces.
+ */
+export function buildCspPath(baseUri?: string, offsetUri?: string): string {
+  if (!baseUri) return offsetUri || '';
+  if (!offsetUri) return baseUri;
+  return offsetUri.startsWith('/') ? `${baseUri}${offsetUri}` : `${baseUri}/${offsetUri}`;
 }
 
 /** Derive scope from baseUri */
